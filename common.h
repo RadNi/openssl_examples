@@ -47,6 +47,10 @@ struct ssl_client
 {
   int fd;
 
+  unsigned int app_data_length;
+
+  unsigned int flag;
+
   SSL *ssl;
 
   BIO *rbio; /* SSL reads from, we write to. */
@@ -81,6 +85,8 @@ void ssl_client_init(struct ssl_client *p,
   p->rbio = BIO_new(BIO_s_mem());
   p->wbio = BIO_new(BIO_s_mem());
   p->ssl = SSL_new(ctx);
+  
+  client.flag = 0;
 
   if (mode == SSLMODE_SERVER)
     SSL_set_accept_state(p->ssl);  /* ssl server mode */
@@ -189,8 +195,43 @@ int on_read_cb(char* src, size_t len)
 
     /* The encrypted data is now in the input bio so now we can perform actual
      * read of unencrypted data. */
-
-    do {
+//    char buff2[100000] = {'\0'};
+//    int index = 0;
+//    char ch;
+//    BIO_read(client.rbio, buff2, sizeof(buff2));
+//    unsigned int j;
+//    for ( j=0 ; j < strlen(buff2) ; j++ )
+//	    printf(" %d ", (int)buff2[j]);
+//    printf("\n");
+//    printf("n: %d\n", BIO_write(client.rbio, buff2, strlen(buff2)));
+//  //  do {
+//  //      	n = BIO_read(client.rbio, ch, sizeof(ch));
+  //              if (n > 0)
+  //      		printf(" %d ", (int)ch);
+  //      	else if (!BIO_should_retry(client.rbio))
+  //       	       return -1;
+  //  } while (n>0);
+ ////   while(n = BIO_read(client.rbio, ch, sizeof(ch) > 0))
+///		    printf(" %d ", (int)ch);
+//    do {
+//            n = BIO_read(client.rbio, ch, sizeof(ch));
+//            buff2[index] = ch;
+//            index++;
+//            printf("hmm");
+//    }while(!BIO_eof(client.rbio));
+//    BIO_write(client.rbio, buff2, sizeof(char)*index);
+    
+     
+//     FILE* fd = fopen("/tmp/ssl_client_read.out", "a+");
+//     unsigned int i;
+//     for ( i=0; i < index; i++)
+//     {
+//           fprintf(fd, " %d ", (int)buff2[i]);
+//     }
+//     fprintf(fd, "\n------------\n");
+//     fclose(fd); 
+//
+    do {      
       n = SSL_read(client.ssl, buf, sizeof(buf));
       if (n > 0)
         client.io_on_read(buf, (size_t)n);
@@ -273,6 +314,28 @@ int do_sock_read()
   char buf[DEFAULT_BUF_SIZE];
   ssize_t n = read(client.fd, buf, sizeof(buf));
 
+
+  FILE* fd = fopen("/tmp/ssl_client_read.out", "a+");
+  if ( client.flag ){
+	unsigned int i;
+	for ( i=0 ; i<strlen(buf) ; i++, client.app_data_length-- ){
+		if ( client.app_data_length == 0 ) {
+			client.flag = 0;
+			break;
+		}
+		fprintf(fd, " %02x ", (int)buf[i] & 0xff);
+	}
+  }
+  else if ( (int)buf[0] == 23 && (int)buf[1] == 3 && (int)buf[2] == 3 ){
+	client.app_data_length = (int)buf[3]*256 + (int)buf[4];
+	fprintf(fd, "\n size: %d -------------------------\n", client.app_data_length);
+	client.flag = 1;
+	unsigned int j;
+	for ( j=5 ; j<strlen(buf) ; j++ )
+		fprintf(fd, " %02x ", (int)buf[j] & 0xff);
+	client.app_data_length -= strlen(buf) - 5;
+  }  
+  fclose(fd);
   if (n>0)
     return on_read_cb(buf, (size_t)n);
   else
@@ -283,6 +346,14 @@ int do_sock_read()
 int do_sock_write()
 {
   ssize_t n = write(client.fd, client.write_buf, client.write_len);
+  FILE* fd = fopen("/tmp/ssl_client_write.out", "a+");
+  unsigned int i;
+  for ( i=0; i < (int)n; i++)
+  {
+	fprintf(fd, " %d ", (int)client.write_buf[i]);
+  }
+  fprintf(fd, "\n------------\n");
+  fclose(fd);
   if (n>0) {
     if ((size_t)n<client.write_len)
       memmove(client.write_buf, client.write_buf+n, client.write_len-n);

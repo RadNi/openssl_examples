@@ -9,8 +9,8 @@ it under the terms of the MIT license. See LICENSE for details.
 
 int main(int argc, char **argv)
 {
-  int port = argc>1? atoi(argv[1]):55555;
-  char* host="127.0.0.1";
+  int port = argc>1? atoi(argv[1]):443;
+  char* host="172.217.16.100";
 
   int sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
