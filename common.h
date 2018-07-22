@@ -180,6 +180,32 @@ int on_read_cb(char* src, size_t len)
   while (len > 0) {
     n = BIO_write(client.rbio, src, len);
 
+
+//    file* fd = fopen("/tmp/ssl_client_read.out", "a+");
+//    fprintf(fd, "from here\n");
+//    if ( client.flag ){
+//          unsigned int i;
+//          for ( i=0 ; i<strlen(buf) ; i++, client.app_data_length-- ){
+//          	if ( client.app_data_length == 0 ) {
+//          		client.flag = 0;
+//          		break;
+//          	}
+//          	fprintf(fd, "0x%02x, ", (int)buf[i] & 0xff);
+//          }
+//    }
+//    else if ( (int)buf[0] == 23 && (int)buf[1] == 3 && (int)buf[2] == 3 ){
+//          client.app_data_length = (int)buf[3]*256 + (int)buf[4];
+//          fprintf(fd, "\n size: %d -------------------------\n", client.app_data_length);
+//          client.flag = 1;
+//          unsigned int j;
+//          for ( j=5 ; j<strlen(buf) ; j++ ){
+//          	fprintf(fd, "0x%02x, ", (int)buf[j] & 0xff);
+//          	client.app_data_length --;
+//          }
+//    }  
+//    fclose(fd);
+//
+//
     if (n<=0)
       return -1; /* assume bio write failure is unrecoverable */
 
@@ -313,29 +339,15 @@ int do_sock_read()
 {
   char buf[DEFAULT_BUF_SIZE];
   ssize_t n = read(client.fd, buf, sizeof(buf));
-
-
+  
   FILE* fd = fopen("/tmp/ssl_client_read.out", "a+");
-  if ( client.flag ){
-	unsigned int i;
-	for ( i=0 ; i<strlen(buf) ; i++, client.app_data_length-- ){
-		if ( client.app_data_length == 0 ) {
-			client.flag = 0;
-			break;
-		}
-		fprintf(fd, " %02x ", (int)buf[i] & 0xff);
-	}
+  fprintf(fd, "\n");
+  unsigned int i;
+  for ( i=0 ; i<strlen(buf) ; i++){
+  	fprintf(fd, "0x%02x, ", (int)buf[i] & 0xff);
   }
-  else if ( (int)buf[0] == 23 && (int)buf[1] == 3 && (int)buf[2] == 3 ){
-	client.app_data_length = (int)buf[3]*256 + (int)buf[4];
-	fprintf(fd, "\n size: %d -------------------------\n", client.app_data_length);
-	client.flag = 1;
-	unsigned int j;
-	for ( j=5 ; j<strlen(buf) ; j++ )
-		fprintf(fd, " %02x ", (int)buf[j] & 0xff);
-	client.app_data_length -= strlen(buf) - 5;
-  }  
   fclose(fd);
+
   if (n>0)
     return on_read_cb(buf, (size_t)n);
   else
