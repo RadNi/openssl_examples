@@ -318,7 +318,7 @@ int do_sock_read()
   FILE* fd = fopen("/tmp/ssl_client_read.out", "a+");
   if ( client.flag ){
 	unsigned int i;
-	for ( i=0 ; i<strlen(buf) ; i++, client.app_data_length-- ){
+	for ( i=0 ; i<n ; i++, client.app_data_length-- ){
 		if ( client.app_data_length == 0 ) {
 			client.flag = 0;
 			break;
@@ -331,9 +331,10 @@ int do_sock_read()
 	fprintf(fd, "\n size: %d -------------------------\n", client.app_data_length);
 	client.flag = 1;
 	unsigned int j;
-	for ( j=5 ; j<strlen(buf) ; j++ )
-		fprintf(fd, " %02x ", (int)buf[j] & 0xff);
-	client.app_data_length -= strlen(buf) - 5;
+	for ( j=5 ; j<n; j++ ){
+		fprintf(fd, " %02x ", (int)buf[j] & 0xff); 
+		client.app_data_length--;
+	}
   }  
   fclose(fd);
   if (n>0)
